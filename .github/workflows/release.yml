@@ -13,6 +13,8 @@ permissions:
 jobs:
   build-sender:
     name: Build Sender (${{ matrix.os }} - ${{ matrix.arch }})
+    env:
+      TARGETBRIDGE_SIGNING_CONFIGURED: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 != '' }}
     strategy:
       matrix:
         include:
@@ -30,7 +32,7 @@ jobs:
           brew install xcodegen
 
       - name: Import release signing certificate
-        if: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 != '' }}
+        if: ${{ env.TARGETBRIDGE_SIGNING_CONFIGURED == 'true' }}
         uses: ./.github/actions/import-macos-signing-certificate
         with:
           certificate-base64: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 }}
@@ -66,6 +68,8 @@ jobs:
   build-receiver:
     name: Build Receiver (macOS ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
+    env:
+      TARGETBRIDGE_SIGNING_CONFIGURED: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 != '' }}
     strategy:
       matrix:
         include:
@@ -82,7 +86,7 @@ jobs:
           brew install ffmpeg sdl2 sdl3 dylibbundler
 
       - name: Import release signing certificate
-        if: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 != '' }}
+        if: ${{ env.TARGETBRIDGE_SIGNING_CONFIGURED == 'true' }}
         uses: ./.github/actions/import-macos-signing-certificate
         with:
           certificate-base64: ${{ secrets.TARGETBRIDGE_CODESIGN_P12_BASE64 }}
