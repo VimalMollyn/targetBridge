@@ -16,12 +16,8 @@ import Foundation
 final class TBLocalOutputMuter {
     private struct HeldDevice {
         let id: AudioDeviceID
-        /// Mute elements this class flipped: the main element, or the
-        /// per-channel ones for devices without a main mute control.
+        /// Only elements successfully changed from unmuted to muted.
         let elements: [AudioObjectPropertyElement]
-        /// Whether the device was already muted before we touched it. If so,
-        /// restoring leaves it muted.
-        let wasMuted: Bool
     }
 
     private static let defaultOutputAddress = AudioObjectPropertyAddress(
@@ -94,25 +90,23 @@ final class TBLocalOutputMuter {
             TBLog.audio.warning("local output muter: device \(device) has no mute control")
             return
         }
-        let wasMuted = elements.allSatisfy { Self.isMuted(device, element: $0) }
-        for element in elements where !Self.isMuted(device, element: element) {
-            Self.setMuted(true, device, element: element)
-        }
-        held = HeldDevice(id: device, elements: elements, wasMuted: wasMuted)
-        TBLog.audio.info("local output muter: muted device \(device) (was muted: \(wasMuted))")
+        let changed = TBOutputMuteRestoration.mute(
+            elements: elements,
+            read: { Self.muteState(device, element: $0) },
+            write: { Self.setMuted($1, device, element: $0) }
+        )
+        held = HeldDevice(id: device, elements: changed)
+        TBLog.audio.info("local output muter: muted device \(device) (changed elements: \(changed.count))")
     }
 
     private func restoreHeldDevice() {
         guard let held else { return }
         self.held = nil
-        guard !held.wasMuted else { return }
-        // Only lift the mute we applied. If the user muted the device
-        // themselves in the meantime, the flag reads true either way and we
-        // cannot tell the two apart — but leaving a device muted is the
-        // conservative outcome, so unmute only when a session ended normally.
-        for element in held.elements where Self.isMuted(held.id, element: element) {
-            Self.setMuted(false, held.id, element: element)
-        }
+        TBOutputMuteRestoration.restore(
+            changedElements: held.elements,
+            read: { Self.muteState(held.id, element: $0) },
+            write: { Self.setMuted($1, held.id, element: $0) }
+        )
         TBLog.audio.info("local output muter: restored device \(held.id)")
     }
 
@@ -152,20 +146,21 @@ final class TBLocalOutputMuter {
         return settable.boolValue
     }
 
-    private static func isMuted(_ device: AudioDeviceID, element: AudioObjectPropertyElement) -> Bool {
+    private static func muteState(_ device: AudioDeviceID, element: AudioObjectPropertyElement) -> Bool? {
         var address = muteAddress(element)
         var value: UInt32 = 0
         var size = UInt32(MemoryLayout<UInt32>.size)
-        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr else { return false }
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr else { return nil }
         return value != 0
     }
 
-    private static func setMuted(_ muted: Bool, _ device: AudioDeviceID, element: AudioObjectPropertyElement) {
+    private static func setMuted(_ muted: Bool, _ device: AudioDeviceID, element: AudioObjectPropertyElement) -> Bool {
         var address = muteAddress(element)
         var value: UInt32 = muted ? 1 : 0
         let status = AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value)
         if status != noErr {
             TBLog.audio.warning("local output muter: set mute=\(muted) on \(device)/\(element) failed (\(status))")
         }
+        return status == noErr
     }
 }
