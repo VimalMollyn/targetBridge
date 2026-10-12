@@ -60,6 +60,28 @@ struct TBDisplaySenderSettingsView: View {
                     Toggle(TBDisplaySenderL10n.verboseDisplayLogging(service.language), isOn: $service.verboseDisplayLogging)
                 }
 
+                settingsSection(title: audioTitle) {
+                    Toggle(TBDisplaySenderL10n.volumeKeysControlReceiver(service.language), isOn: $service.volumeKeysControlReceiver)
+                    if service.volumeKeysControlReceiver && !service.localInputInjectionTrusted {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(TBDisplaySenderL10n.volumeKeysAccessibilityHint(service.language))
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                            Button(TBDisplaySenderL10n.openAccessibilitySettings(service.language)) {
+                                service.openAccessibilitySettings()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    Toggle(TBDisplaySenderL10n.muteLocalOutputWhileRelaying(service.language), isOn: $service.muteLocalOutputWhileRelaying)
+                    Text(TBDisplaySenderL10n.audioRoutingHint(service.language))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 settingsSection(title: behaviorTitle) {
                     Text(TBDisplaySenderL10n.settingsHint(service.language))
                         .font(.footnote)
@@ -307,6 +329,16 @@ struct TBDisplaySenderSettingsView: View {
         case .german: return "Oberfläche"
         case .french: return "Interface"
         case .chinese: return "界面"
+        }
+    }
+
+    private var audioTitle: String {
+        switch service.language {
+        case .italian: return "Audio"
+        case .english: return "Audio"
+        case .german: return "Audio"
+        case .french: return "Audio"
+        case .chinese: return "音频"
         }
     }
 
