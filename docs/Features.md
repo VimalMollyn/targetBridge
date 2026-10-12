@@ -198,9 +198,9 @@ Mac's keyboard and speakers to the relayed audio while a session streams it:
 - `Mute this Mac's speakers while audio is streamed`: this Mac's default
   output device is muted when streaming starts and restored when it stops,
   so the stream is not heard twice. Only the mute flag changes, never the
-  volume, and a device that was already muted stays muted afterwards. If the
-  default output device changes mid-session (headphones, AirPlay), the mute
-  follows it.
+  volume. Only channels successfully muted by TargetBridge are restored;
+  channels that were already muted stay muted afterwards. If the default
+  output device changes mid-session (headphones, AirPlay), the mute follows it.
 
 Both are off by default and only act while at least one connected session
 has `Stream audio` enabled.
